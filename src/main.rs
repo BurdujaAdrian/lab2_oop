@@ -1,23 +1,4 @@
-#![allow(unreachable_code, dead_code)]
-use std::env;
-use std::fs;
-
 fn main() {
-    let mut files: Vec<TextData> = vec![];
-    for path in env::args().skip(1) {
-        match fs::read_to_string(&path) // readFileIntoString(String path)
-            // I assume I don't have to wrap this function
-            // into a different struct for no reason
-        {
-            Ok(contents) => files.push(initTextData(path,contents)),
-            Err(err) => println!("file {path} reading error: {:?}\n", err),
-        }
-    }
-    //println!("succcesfully read data:{files:#?}");
-
-    return;
-
-    // for later
     let display1 = Display {
         width: 1920,
         height: 1080,
@@ -39,7 +20,7 @@ fn main() {
         model: String::from("Display 3"),
     };
 
-    let displays = vec![display1, display2, display3];
+    let displays = vec![display1, display2, display3.clone()];
 
     for dis1 in &displays {
         for dis2 in &displays {
@@ -51,82 +32,58 @@ fn main() {
             dis1.compare_with_monitor(&dis2);
         }
     }
+    let mut assistant = Assistant {
+        assigned_diplays: displays,
+        assistant_name: "Jhon".to_string(),
+    };
+
+    assistant.assign_display(Display::default());
+    assistant.assist();
+    if let Some(display_bought) = assistant.buy_display(&display3) {
+        println!(
+            "assistant:{} bought:{display_bought:?}",
+            assistant.assistant_name
+        );
+    }
+    if let Some(_) = assistant.buy_display(&display3) {
+    } else {
+        println!("couldn't find {display3:?}");
+    }
 }
 
-#[derive(Default)]
-struct TextData {
-    file_name: String,
-    text: String,
-    n_of_vowels: Option<u32>,
-    n_of_consonants: Option<u32>,
-    n_of_letters: Option<u32>,
+struct Assistant {
+    assistant_name: String,
+    assigned_diplays: Vec<Display>,
 }
-const CONSONANTS: &str = "qwrtpsdfghjklzxcvbnm";
-impl TextData {
-    fn get_numb_of_vowels(&mut self) -> u32 {
-        if let Some(number) = self.n_of_vowels {
-            return number;
+impl Assistant {
+    fn assign_display(&mut self, display: Display) {
+        self.assigned_diplays.push(display);
+    }
+
+    fn assist(&self) {
+        let displays = &self.assigned_diplays;
+        for i in 0..displays.len() - 1 {
+            displays[i].compare_sharpness(&displays[i + 1]);
+            displays[i].compare_size(&displays[i + 1]);
+            displays[i].compare_with_monitor(&displays[i + 1]);
         }
+        displays[displays.len() - 1].compare_sharpness(&displays[0]);
+        displays[displays.len() - 1].compare_size(&displays[0]);
+        displays[displays.len() - 1].compare_with_monitor(&displays[0]);
+    }
 
-        let mut number = 0;
-        for char in self.text.to_lowercase().chars() {
-            match char {
-                'o' | 'a' | 'i' | 'e' | 'u' => number += 1,
-                _ => (),
+    fn buy_display(&mut self, d: &Display) -> Option<Display> {
+        let displays = &self.assigned_diplays;
+        for i in 0..displays.len() {
+            if *d == displays[i] {
+                return Some(self.assigned_diplays.swap_remove(i));
             }
         }
-        self.n_of_vowels = Some(number);
-        return number;
-    }
-
-    fn get_number_of_consonants(&mut self) -> u32 {
-        if let Some(number) = self.n_of_consonants {
-            return number;
-        }
-        let mut number = 0;
-        self.text.to_lowercase().chars().for_each(|char| {
-            if char.is_alphabetic() {
-                if CONSONANTS.contains(char) {
-                    number += 1;
-                }
-            }
-        });
-        self.n_of_consonants = Some(number);
-        return number;
-    }
-
-    fn get_number_of_letters(&mut self) -> u32 {
-        if let Some(number) = self.n_of_letters {
-            return number;
-        }
-        let mut number = 0;
-
-        // if we have them already calculated, might as well
-        if let (Some(vowels), Some(consns)) = (self.n_of_vowels, self.n_of_consonants) {
-            number = vowels + consns;
-            self.n_of_letters = Some(number);
-            return number;
-        }
-        for char in self.text.chars() {
-            if char.is_alphabetic() {
-                number += 1;
-            }
-        }
-        self.n_of_letters = Some(number);
-        return number;
+        return None;
     }
 }
 
-#[allow(non_snake_case)]
-fn initTextData(path: String, contents: String) -> TextData {
-    TextData {
-        file_name: path,
-        text: contents,
-        ..TextData::default() // Use the default values for the other fields
-    }
-}
-
-#[derive(PartialEq)]
+#[derive(PartialEq, Default, Debug, Clone)]
 struct Display {
     width: i32,
     height: i32,
